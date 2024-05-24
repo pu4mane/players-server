@@ -1,4 +1,4 @@
-package main
+package poker
 
 import (
 	"fmt"
@@ -8,25 +8,6 @@ import (
 	"reflect"
 	"testing"
 )
-
-type StubPlayerStore struct {
-	scores   map[string]int
-	winCalls []string
-	league   League
-}
-
-func (s *StubPlayerStore) GetPlayerScore(name string) int {
-	score := s.scores[name]
-	return score
-}
-
-func (s *StubPlayerStore) RecordWin(name string) {
-	s.winCalls = append(s.winCalls, name)
-}
-
-func (s *StubPlayerStore) GetLeague() League {
-	return s.league
-}
 
 func TestGETPlayers(t *testing.T) {
 	store := StubPlayerStore{
@@ -86,21 +67,14 @@ func TestStoreWins(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertStatus(t, response.Code, http.StatusAccepted)
-
-		if len(store.winCalls) != 1 {
-			t.Fatalf("got %d calls to RecordWin want %d", len(store.winCalls), 1)
-		}
-
-		if store.winCalls[0] != player {
-			t.Errorf("did not store correct winner got %q want %q", store.winCalls[0], player)
-		}
+		AssertPlayerWin(t, &store, player)
 	})
 }
 
 func TestLeague(t *testing.T) {
 
 	t.Run("it returns the league table as JSON", func(t *testing.T) {
-		wantedLeague := League{
+		wantedLeague := []Player{
 			{"Cleo", 32},
 			{"Chris", 20},
 			{"Tiest", 14},
@@ -125,12 +99,12 @@ func TestLeague(t *testing.T) {
 
 func assertContentType(t testing.TB, response *httptest.ResponseRecorder, want string) {
 	t.Helper()
-	if response.Result().Header.Get("content-type") != want {
+	if response.Header().Get("content-type") != want {
 		t.Errorf("response did not have content-type of %s, got %v", want, response.Result().Header)
 	}
 }
 
-func getLeagueFromResponse(t testing.TB, body io.Reader) League {
+func getLeagueFromResponse(t testing.TB, body io.Reader) []Player {
 	t.Helper()
 	league, err := NewLeague(body)
 
@@ -141,7 +115,7 @@ func getLeagueFromResponse(t testing.TB, body io.Reader) League {
 	return league
 }
 
-func assertLeague(t testing.TB, got, want League) {
+func assertLeague(t testing.TB, got, want []Player) {
 	t.Helper()
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %v want %v", got, want)
