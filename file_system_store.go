@@ -3,27 +3,34 @@ package main
 import (
 	"encoding/json"
 	"io"
+	"os"
 )
 
+// FileSystemPlayerStore stores players in the filesystem.
 type FileSystemPlayerStore struct {
-	database io.ReadWriteSeeker
+	database *json.Encoder
 	league   League
 }
 
-func NewFileSystemPlayerStore(database io.ReadWriteSeeker) *FileSystemPlayerStore {
-	database.Seek(0, io.SeekStart)
-	league, _ := NewLeague(database)
+// NewFileSystemPlayerStore creates a FileSystemPlayerStore.
+func NewFileSystemPlayerStore(file *os.File) *FileSystemPlayerStore {
+	file.Seek(0, io.SeekStart)
+	league, _ := NewLeague(file)
+
 	return &FileSystemPlayerStore{
-		database: database,
+		database: json.NewEncoder(&tape{file}),
 		league:   league,
 	}
 }
 
+// GetLeague returns the scores of all the players.
 func (f *FileSystemPlayerStore) GetLeague() League {
 	return f.league
 }
 
+// GetPlayerScore retrieves a player's score.
 func (f *FileSystemPlayerStore) GetPlayerScore(name string) int {
+
 	player := f.league.Find(name)
 
 	if player != nil {
@@ -33,6 +40,7 @@ func (f *FileSystemPlayerStore) GetPlayerScore(name string) int {
 	return 0
 }
 
+// RecordWin will store a win for a player, incrementing wins if already known.
 func (f *FileSystemPlayerStore) RecordWin(name string) {
 	player := f.league.Find(name)
 
@@ -42,6 +50,5 @@ func (f *FileSystemPlayerStore) RecordWin(name string) {
 		f.league = append(f.league, Player{name, 1})
 	}
 
-	f.database.Seek(0, io.SeekStart)
-	json.NewEncoder(f.database).Encode(f.league)
+	f.database.Encode(f.league)
 }
