@@ -17,7 +17,7 @@ func main() {
 	}
 	defer close()
 
-	server := poker.NewPlayerServer(store)
+	server, _ := poker.NewPlayerServer(store)
 
 	log.Fatal(http.ListenAndServe(":8080", server))
 }
